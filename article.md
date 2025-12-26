@@ -33,8 +33,6 @@ Instead of relying solely on model parameters, RAG injects external context at q
 ## 3. End-to-End System Architecture
 
 ### High-Level RAG Architecture
-
-```mermaid
 flowchart LR
     A[User Question]
     B[Embedding Model]
@@ -177,3 +175,4 @@ These issues can be mitigated through improved chunking strategies, better embed
 This article demonstrated a complete, end-to-end implementation of a Retrieval-Augmented Generation system for document question answering. By combining vector-based retrieval with language generation, RAG enables LLMs to operate reliably on private and domain-specific data while significantly reducing hallucination.
 
 RAG is a practical and scalable solution for real-world applications such as internal knowledge assistants, HR policy bots, and enterprise document search systems.
+
