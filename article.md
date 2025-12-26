@@ -6,7 +6,7 @@ Large Language Models (LLMs) are capable of generating fluent and human-like tex
 
 Retrieval-Augmented Generation (RAG) addresses these issues by combining **document retrieval** with **language generation**. Instead of generating answers purely from model memory, RAG grounds responses in retrieved documents.
 
-This article presents a complete, end-to-end explanation of building a RAG-based document question-answering system, covering system architecture, implementation steps, query-time execution, results, and limitations.
+This article presents a complete, end-to-end explanation of building a RAG-based document question-answering system, covering system architecture, implementation steps, query-time execution, results, limitations, and failure modes.
 
 
 ## 1. Problem Statement
@@ -19,8 +19,6 @@ Traditional LLM-based systems exhibit the following problems:
 
 For real-world applications such as HR assistants, internal knowledge bases, and compliance systems, this behavior is unacceptable. We need a system where answers are **grounded in trusted documents**, not probabilistic guesses.
 
----
-
 ## 2. Solution Overview: What is Retrieval-Augmented Generation (RAG)?
 
 Retrieval-Augmented Generation (RAG) is a hybrid approach that combines:
@@ -30,9 +28,12 @@ Retrieval-Augmented Generation (RAG) is a hybrid approach that combines:
 
 Instead of relying solely on model parameters, RAG injects external context at query time. This significantly reduces hallucination and improves factual accuracy.
 
+---
+
 ## 3. End-to-End System Architecture
 
 ### High-Level RAG Architecture
+
 flowchart LR
     A[User Question]
     B[Embedding Model]
@@ -46,18 +47,22 @@ flowchart LR
     C --> D
     D --> E
     E --> F
-Architecture Explanation
-The user submits a question
+### Architecture Explanation
+The RAG system combines a retrieval pipeline with a generation pipeline at query time.
 
-The question is converted into a vector embedding
+The user submits a natural language question.
 
-The vector database performs similarity search
+The question is converted into a dense vector embedding using the same embedding model used during document ingestion.
 
-Relevant document chunks are retrieved
+The vector database (FAISS) performs semantic similarity search over stored document embeddings.
 
-The LLM generates a grounded answer using retrieved content
+The most relevant document chunks are retrieved as contextual evidence.
 
-This ensures answers are document-backed, not hallucinated.
+The retrieved context is injected into the prompt of the language model.
+
+The LLM generates a grounded answer based strictly on the provided documents.
+
+This architecture ensures responses are document-backed rather than hallucinated, making the system suitable for enterprise use cases.
 
 4. Step-by-Step Implementation
 Step 1: Dataset Preparation
@@ -89,7 +94,7 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 embeddings = HuggingFaceEmbeddings(
     model_name="sentence-transformers/all-MiniLM-L6-v2"
 )
-Embeddings capture semantic meaning, enabling similarity search based on meaning rather than keywords.
+Embeddings capture semantic meaning, enabling similarity search beyond keyword matching.
 
 Step 4: Storing Vectors in FAISS
 python
@@ -108,8 +113,6 @@ docs = retriever.invoke("How many leave days are allowed?")
 The retrieved documents act as the ground truth context for answer generation.
 
 5. Query-Time Execution Flow
-mermaid
-Copy code
 sequenceDiagram
     participant User
     participant Retriever
@@ -123,7 +126,7 @@ sequenceDiagram
     LLM-->>User: Grounded Answer
 Retrieval and generation operate together during inference to ensure factual grounding.
 
-6. Results
+###6. Results
 Query:
 
 How many leave days are allowed?
@@ -132,7 +135,7 @@ Retrieved Document Content:
 
 Employees are entitled to 20 days of paid leave per year.
 
-Observations
+### Observations
 Correct document retrieval
 
 Answer grounded in source data
@@ -141,7 +144,7 @@ Hallucination avoided
 
 This validates the effectiveness of the RAG pipeline.
 
-7. Comparison: With vs Without RAG
+### 7. Comparison: With vs Without RAG
 Without RAG
 Generic or incorrect answers
 
@@ -158,7 +161,7 @@ Verifiable responses
 
 RAG is essential for building reliable enterprise GenAI systems.
 
-8. Limitations
+### 8. Limitations
 Despite its advantages, RAG has limitations:
 
 Retrieval quality directly affects answer quality
@@ -171,7 +174,36 @@ Poor document chunking reduces retrieval accuracy
 
 These issues can be mitigated through improved chunking strategies, better embeddings, and system-level optimizations.
 
-9. Conclusion
+### 9. Failure Modes and Practical Observations
+While the RAG pipeline performs well under ideal conditions, several practical failure cases were observed.
+
+1. Irrelevant Retrieval Due to Poor Chunking
+Large, unchunked documents caused the retriever to return loosely related content.
+
+Observation:
+Smaller, semantically coherent chunks significantly improved retrieval precision.
+
+2. Semantic Mismatch in Similar Queries
+Queries with overlapping terminology occasionally retrieved incorrect policy sections.
+
+Observation:
+Vector similarity alone is insufficient without careful chunking or metadata filtering.
+
+3. Hallucination Under Weak Context
+When retrieved context was incomplete, the LLM attempted to fill gaps using prior knowledge.
+
+Observation:
+Explicit prompt constraints reduced this behavior substantially.
+
+4. Latency Tradeoffs
+Embedding generation and vector search introduced additional latency at scale.
+
+Observation:
+Caching embeddings and limiting top-k retrieval maintained acceptable performance.
+
+These observations highlight that RAG reliability depends heavily on retrieval quality, chunking strategy, and prompt design.
+
+10. Conclusion
 This article demonstrated a complete, end-to-end implementation of a Retrieval-Augmented Generation system for document question answering. By combining vector-based retrieval with language generation, RAG enables LLMs to operate reliably on private and domain-specific data while significantly reducing hallucination.
 
 RAG is a practical and scalable solution for real-world applications such as internal knowledge assistants, HR policy bots, and enterprise document search systems.
